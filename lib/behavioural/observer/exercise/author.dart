@@ -16,4 +16,9 @@ class Author {
     print('\n$name is publishing a NEWSLETTER: "$content"');
     publisher.notifySubscribers(PublishType.NEWS, 'New newsletter by $name: $content');
   }
+
+  void publishPodcast(String content) {
+    print('\n$name is publishing a PODCAST: "$content"');
+    publisher.notifySubscribers(PublishType.PODCAST, 'New podcast by $name: $content');
+  }
 }

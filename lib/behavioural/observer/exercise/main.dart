@@ -38,6 +38,7 @@ void main() {
   publisher.subscribe(PublishType.NEWS, mohamed);
   publisher.subscribe(PublishType.NEWS_AND_BLOG, sara);
   publisher.subscribe(PublishType.BLOG, john);
+  publisher.subscribe(PublishType.PODCAST, mohamed);
 
   /// Authors
   Author drAhmed = Author('Dr. Ahmed', publisher);
@@ -50,6 +51,8 @@ void main() {
   profSalma.publishNewsletter('Weekly Tech News - November 2025');
 
   drAhmed.publishBlogPost('Understanding Design Patterns');
+
+  profSalma.publishPodcast('The Future of AI');
 
   /// unsubscribe
   print('\n\n=== Unsubscribing Ali from BLOG ===');

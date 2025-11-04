@@ -6,6 +6,7 @@ class Publisher {
     PublishType.NEWS: [],
     PublishType.BLOG: [],
     PublishType.NEWS_AND_BLOG: [],
+    PublishType.PODCAST: [],
   };
 
   void subscribe(PublishType type, Subscriber subscriber) {
