@@ -1,5 +1,5 @@
 enum TransportWayType {
   land,
   sea,
-  // air,
+  air,
 }
