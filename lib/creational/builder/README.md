@@ -22,7 +22,9 @@
 - [Flutter Applications](#-flutter-applications)
 - [Comparison with Other Patterns](#-comparison-with-other-patterns)
 - [UML Diagram](#-uml-diagram)
+- [Builder Pattern with Director (Advanced)](#-builder-pattern-with-director-advanced)
 - [Key Takeaways](#-key-takeaways)
+- [Questions & Answers](#-questions--answers)
 
 ---
 
@@ -132,11 +134,10 @@ class GameConfiguration {
   // ... other fields
   
   // Private constructor - only code in this library can call it
-  GameConfiguration._({
-    required this.graphicsQuality,
-    required this.soundEnabled,
-    // ... other parameters
-  });
+  GameConfiguration._(GameConfigurationBuilder builder)
+      : graphicsQuality = builder.getGraphicsQuality!,
+        soundEnabled = builder.isSoundEnabled!,
+        //other params;
 }
 ```
 
@@ -158,6 +159,7 @@ class GameConfigurationBuilder implements GameBuilder {
   // ... other nullable fields
   
   GameConfiguration build() {
+    // availability to add validation here ...
     // Validate required fields
     if (graphicsQuality == null) {
       throw StateError('graphicsQuality is required.');
@@ -170,13 +172,8 @@ class GameConfigurationBuilder implements GameBuilder {
     subtitlesEnabled ??= false;
     theme ??= 'Default';
     language ??= 'English';
-    
-    // Construct immutable product using private constructor
-    return GameConfiguration._(
-      graphicsQuality: graphicsQuality!,
-      soundEnabled: soundEnabled!,
-      // ... other fields
-    );
+
+    return GameConfiguration._(this);
   }
 }
 ```
@@ -600,6 +597,451 @@ end note
 
 ---
 
+## 🎬 Builder Pattern with Director (Advanced)
+
+### What is the Director?
+
+The **Director** is an optional component in the classic GoF Builder pattern that **orchestrates the building process**. It encapsulates complex construction sequences and provides standard configurations.
+
+### Components Structure
+
+```
+┌──────────────┐         ┌──────────────┐
+│   Director   │────────>│   Builder    │
+└──────────────┘         └──────────────┘
+                                │
+                                │ builds
+                                ▼
+                         ┌──────────────┐
+                         │   Product    │
+                         └──────────────┘
+```
+
+### File Structure (with Director)
+
+```
+builder/
+├── exercise_with_director/
+│   ├── game_configuration.dart          # Product (library)
+│   ├── game_configuration_builder.dart  # Builder (part)
+│   ├── game_configuration_director.dart # Director ⭐ NEW
+│   ├── game_builder.dart                # Builder interface
+│   └── main.dart                        # Usage example
+```
+
+### Code Example
+
+**Director Implementation:**
+
+```dart
+class GameConfigurationDirector {
+  /// Build mobile configuration
+  GameConfiguration buildMobileConfig(GameConfigurationBuilder builder) {
+    return builder
+        .setGraphicsQuality('Low')
+        .setSoundEnabled(false)
+        .setControlScheme('Touch')
+        .setDifficultyLevel(2)
+        .setSubtitlesEnabled(true)
+        .setTheme('Light')
+        .setLanguage('English')
+        .build();
+  }
+  
+  /// Build desktop configuration
+  GameConfiguration buildDesktopConfig(GameConfigurationBuilder builder) {
+    return builder
+        .setGraphicsQuality('Ultra')
+        .setSoundEnabled(true)
+        .setControlScheme('Keyboard')
+        .setDifficultyLevel(4)
+        .setSubtitlesEnabled(false)
+        .setTheme('Dark')
+        .setLanguage('English')
+        .build();
+  }
+  
+  /// Build console configuration
+  GameConfiguration buildConsoleConfig(GameConfigurationBuilder builder) {
+    return builder
+        .setGraphicsQuality('High')
+        .setSoundEnabled(true)
+        .setControlScheme('Gamepad')
+        .setDifficultyLevel(3)
+        .build();
+  }
+}
+```
+
+**Usage:**
+
+```dart
+// #director: Create director
+final director = GameConfigurationDirector();
+
+// #builder: Reusable builder instance
+final builder = GameConfigurationBuilder();
+
+// Use director for standard configs
+final mobileConfig = director.buildMobileConfig(builder);
+print('Mobile - Graphics: ${mobileConfig.getGraphicsQuality()}');
+
+// Reset and reuse builder
+builder.reset();
+final desktopConfig = director.buildDesktopConfig(builder);
+print('Desktop - Graphics: ${desktopConfig.getGraphicsQuality()}');
+
+// Still can build manually without director
+final customConfig = GameConfigurationBuilder()
+    .setGraphicsQuality('Custom')
+    .setSoundEnabled(true)
+    .setControlScheme('VR')
+    .setDifficultyLevel(5)
+    .build();
+```
+
+### Benefits of Using Director
+
+| Benefit | Description |
+|---------|-------------|
+| **Encapsulation** | Hides complex construction logic from clients |
+| **Reusability** | Director methods can be reused across the application |
+| **DRY Principle** | Avoid duplicating common construction sequences |
+| **Consistency** | Ensures standard configurations are built the same way |
+| **Builder Reuse** | Can reset and reuse the same builder instance |
+| **Guidance** | Provides templates for clients who don't know "how" to build |
+
+### When to Use Director
+
+#### ✅ Use Director When:
+
+1. **Multiple Standard Configurations** exist
+   - Mobile, Desktop, Console presets
+   - Beginner, Intermediate, Expert levels
+   - Development, Staging, Production environments
+
+2. **Complex Construction Logic** that shouldn't be duplicated
+   - Multi-step setup with dependencies
+   - Conditional field settings
+   - Calculations or transformations during build
+
+3. **Client Guidance Needed**
+   - New developers don't know optimal configurations
+   - Domain-specific presets (Medical, Gaming, Finance)
+   - Best-practice configurations
+
+4. **Builder Reuse** is beneficial
+   - Same builder used for multiple configurations
+   - Performance optimization (reduce object creation)
+
+#### ❌ Skip Director When:
+
+1. **Simple Builder** with straightforward usage
+   - Only 1-2 standard configurations
+   - Construction is self-explanatory
+
+2. **Always Custom Configurations**
+   - Clients always build unique objects
+   - No common patterns exist
+
+3. **Preset Builders Sufficient**
+   - Named constructors handle common cases
+   - Example: `PresetGameConfigurationBuilder.lowSpec()`
+
+### Director vs Preset Builders
+
+| Aspect | Director | Preset Builders |
+|--------|----------|-----------------|
+| **Approach** | Orchestrates external builder | Pre-configured builder instance |
+| **Flexibility** | Can work with any builder | Tied to specific builder |
+| **Reusability** | Reuses same builder instance | New builder per preset |
+| **Complexity** | Additional class | Extends existing builder |
+| **Use Case** | Many complex presets | Few simple presets |
+
+**Director Example:**
+```dart
+var director = GameConfigurationDirector();
+var config = director.buildMobileConfig(GameConfigurationBuilder());
+```
+
+**Preset Builder Example:**
+```dart
+var config = PresetGameConfigurationBuilder.lowSpec().build();
+```
+
+### Advanced Director Patterns
+
+#### 1. Director with Validation
+
+```dart
+class GameConfigurationDirector {
+  GameConfiguration buildForDevice(String deviceType, GameConfigurationBuilder builder) {
+    switch (deviceType.toLowerCase()) {
+      case 'mobile':
+        return buildMobileConfig(builder);
+      case 'desktop':
+        return buildDesktopConfig(builder);
+      case 'console':
+        return buildConsoleConfig(builder);
+      default:
+        throw ArgumentError('Unknown device type: $deviceType');
+    }
+  }
+}
+```
+
+#### 2. Director with Callbacks
+
+```dart
+class GameConfigurationDirector {
+  GameConfiguration buildCustom(
+    GameConfigurationBuilder builder,
+    void Function(GameConfigurationBuilder) customize,
+  ) {
+    // Apply base configuration
+    builder
+        .setGraphicsQuality('Medium')
+        .setSoundEnabled(true)
+        .setDifficultyLevel(3);
+    
+    // Allow client to customize
+    customize(builder);
+    
+    return builder.build();
+  }
+}
+
+// Usage
+var config = director.buildCustom(builder, (b) {
+  b.setLanguage('Spanish');
+  b.setTheme('Cyberpunk');
+});
+```
+
+#### 3. Director with Progressive Enhancement
+
+```dart
+class GameConfigurationDirector {
+  /// Start with mobile, then enhance for desktop
+  GameConfiguration buildProgressive(GameConfigurationBuilder builder) {
+    // Base mobile config
+    buildMobileConfig(builder);
+    
+    // Don't call build yet! Enhance it
+    return builder
+        .setGraphicsQuality('Ultra')  // Override
+        .setSoundEnabled(true)         // Override
+        .build();  // Now build
+  }
+}
+```
+
+### UML Diagram (with Director)
+
+```
+┌─────────────────────────────────────────────┐
+│        GameConfigurationDirector            │
+├─────────────────────────────────────────────┤
+│ + buildMobileConfig(builder): GameConfig    │
+│ + buildDesktopConfig(builder): GameConfig   │
+│ + buildConsoleConfig(builder): GameConfig   │
+│ + buildBeginnerConfig(builder): GameConfig  │
+│ + buildCompetitiveConfig(builder): GameConfig│
+└─────────────────────────────────────────────┘
+                    │
+                    │ uses
+                    ▼
+┌─────────────────────────────────────────────┐
+│      GameConfigurationBuilder               │
+├─────────────────────────────────────────────┤
+│ + setGraphicsQuality(String): Builder       │
+│ + setSoundEnabled(bool): Builder            │
+│ + setControlScheme(String): Builder         │
+│ + setDifficultyLevel(int): Builder          │
+│ + build(): GameConfiguration                │
+│ + reset(): void                             │
+└───────────────────────────────────────────���─┘
+                    │
+                    │ builds
+                    ▼
+┌─────────────────────────────────────────────┐
+│          GameConfiguration                  │
+├─────────────────────────────────────────────┤
+│ - graphicsQuality: String (final)           │
+│ - soundEnabled: bool (final)                │
+│ - controlScheme: String (final)             │
+│ + getGraphicsQuality(): String              │
+└─────────────────────────────────────────────┘
+```
+
+### Real-World Director Examples
+
+#### Example 1: Environment-Based Configuration
+
+```dart
+class EnvironmentDirector {
+  GameConfiguration buildForEnvironment(String env, GameConfigurationBuilder builder) {
+    switch (env) {
+      case 'development':
+        return builder
+            .setGraphicsQuality('Low')      // Fast iteration
+            .setSoundEnabled(false)         // Less distraction
+            .setDifficultyLevel(1)          // Easy testing
+            .build();
+      
+      case 'staging':
+        return builder
+            .setGraphicsQuality('Medium')   // Test performance
+            .setSoundEnabled(true)          // Full experience
+            .setDifficultyLevel(3)          // Realistic difficulty
+            .build();
+      
+      case 'production':
+        return builder
+            .setGraphicsQuality('High')     // Best experience
+            .setSoundEnabled(true)
+            .setDifficultyLevel(3)
+            .build();
+      
+      default:
+        throw ArgumentError('Unknown environment: $env');
+    }
+  }
+}
+```
+
+#### Example 2: User-Profile-Based Configuration
+
+```dart
+class UserProfileDirector {
+  GameConfiguration buildForUserProfile(UserProfile profile, GameConfigurationBuilder builder) {
+    // Base configuration for all users
+    builder
+        .setLanguage(profile.preferredLanguage)
+        .setTheme(profile.theme);
+    
+    // Adjust based on user level
+    if (profile.isNewUser) {
+      return builder
+          .setDifficultyLevel(1)
+          .setSubtitlesEnabled(true)
+          .setGraphicsQuality('Medium')
+          .build();
+    } else if (profile.isPro) {
+      return builder
+          .setDifficultyLevel(5)
+          .setSubtitlesEnabled(false)
+          .setGraphicsQuality('Ultra')
+          .build();
+    } else {
+      return builder
+          .setDifficultyLevel(3)
+          .setGraphicsQuality('High')
+          .build();
+    }
+  }
+}
+```
+
+#### Example 3: Accessibility Director
+
+```dart
+class AccessibilityDirector {
+  GameConfiguration buildAccessible(
+    GameConfigurationBuilder builder, {
+    bool visualImpairment = false,
+    bool hearingImpairment = false,
+    bool motorImpairment = false,
+  }) {
+    // Base accessible config
+    builder
+        .setDifficultyLevel(1)
+        .setTheme('Light');
+    
+    // Adjust for specific needs
+    if (visualImpairment) {
+      builder
+          .setGraphicsQuality('Low')      // Less visual noise
+          .setSoundEnabled(true);         // Rely on audio cues
+    }
+    
+    if (hearingImpairment) {
+      builder.setSubtitlesEnabled(true);  // Always show text
+    }
+    
+    if (motorImpairment) {
+      builder.setControlScheme('Touch');  // Easier than keyboard
+    }
+    
+    return builder.build();
+  }
+}
+```
+
+### Director Best Practices
+
+1. **Keep Director Methods Focused**
+   - Each method should build one complete, coherent configuration
+   - Don't create overly generic methods that do too much
+
+2. **Accept Builder as Parameter**
+   - Allows client to reuse the same builder instance
+   - Enables builder reset and reuse pattern
+
+3. **Return the Product, Not the Builder**
+   - Director should call `build()` and return the immutable product
+   - Clients get a ready-to-use configuration
+
+4. **Document the Intent**
+   - Each director method should clearly document what configuration it builds
+   - Explain why certain values are chosen
+
+5. **Combine with Strategy Pattern**
+   - Use different directors for different contexts
+   - Example: `MobileDirector`, `DesktopDirector`, `ConsoleDirector`
+
+### Summary: Builder vs Builder+Director
+
+| Feature | Builder Only | Builder + Director |
+|---------|--------------|-------------------|
+| **Client Control** | Full control over each field | Guided presets + manual override |
+| **Complexity** | Client must know all fields | Director encapsulates knowledge |
+| **Flexibility** | Maximum flexibility | Balanced (presets + customization) |
+| **Code Duplication** | Possible if presets repeated | Eliminated via director methods |
+| **Learning Curve** | Must learn all builder methods | Can use presets immediately |
+| **Best For** | Always unique configs | Mix of standard + custom configs |
+
+### Quick Reference
+
+```dart
+// ❌ Without Director (clients duplicate code)
+var mobile1 = GameConfigurationBuilder()
+    .setGraphicsQuality('Low')
+    .setSoundEnabled(false)
+    .setControlScheme('Touch')
+    .build();
+
+var mobile2 = GameConfigurationBuilder()
+    .setGraphicsQuality('Low')
+    .setSoundEnabled(false)
+    .setControlScheme('Touch')
+    .build();  // Duplicated!
+
+// ✅ With Director (DRY principle)
+var director = GameConfigurationDirector();
+var mobile1 = director.buildMobileConfig(GameConfigurationBuilder());
+var mobile2 = director.buildMobileConfig(GameConfigurationBuilder());
+
+// ✅ Still allows customization
+builder.reset();
+director.buildMobileConfig(builder);  // Don't call build yet!
+var customMobile = builder
+    .setLanguage('French')  // Override one field
+    .build();  // Now build
+```
+
+---
+
 ## 💡 Key Takeaways
 
 ### Core Concepts
@@ -648,10 +1090,13 @@ end note
 ## 🤝 Contributing
 
 Ideas for enhancements:
+- ✅ **Director Pattern** - See `exercise_with_director/` for complete example
 - Add preset builders (e.g., `PresetGameConfigurationBuilder.highPerformance()`)
 - Add unit tests for validation logic
 - Add JSON serialization support
 - Create builder from existing configuration (copy/modify pattern)
+- Add validation for field value ranges (e.g., difficultyLevel 1-5)
+- Implement async build() for configurations that require async initialization
 
 ---
 
@@ -1197,11 +1642,15 @@ class GameConfiguration {
   // Non-nullable fields in product (immutable, always valid)
   final String graphicsQuality;  // Not nullable!
   final bool soundEnabled;       // Not nullable!
-  
-  GameConfiguration._({
-    required this.graphicsQuality,
-    required this.soundEnabled,
-  });
+
+  GameConfiguration._(GameConfigurationBuilder builder)
+      : graphicsQuality = builder.getGraphicsQuality!,
+        soundEnabled = builder.isSoundEnabled!,
+        controlScheme = builder.getControlScheme!,
+        difficultyLevel = builder.getDifficultyLevel!,
+        subtitlesEnabled = builder.isSubtitlesEnabled!,
+        theme = builder.getTheme!,
+        language = builder.getLanguage!;
 }
 ```
 
@@ -1254,6 +1703,63 @@ GameConfiguration modified = GameConfigurationBuilder.from(original)
 - User wants to modify existing settings
 - Create variations of a base configuration
 - Implement "Save As" functionality
+
+---
+
+## 🚀 Quick Reference Guide
+
+### Which Implementation Should I Use?
+
+| Scenario | Recommended Approach | Example Location |
+|----------|---------------------|------------------|
+| Simple object (2-4 params) | ✅ Named parameters | `User({required name, age = 18})` |
+| Complex object (5+ params) | ✅ Builder only | Main `builder/` folder |
+| Multiple standard configs | ✅ Builder + Director | `exercise_with_director/` |
+| Few simple presets | ✅ Preset Builders | Extend builder with named constructors |
+| Always custom configs | ✅ Builder only | Main `builder/` folder |
+
+### Decision Tree
+
+```
+Need complex object?
+├─ No (2-4 params) → Use named parameters
+└─ Yes (5+ params) → Use Builder
+   │
+   ├─ Always custom? → Builder only ✅
+   └─ Have standard configs?
+      │
+      ├─ Few simple presets (1-3) → Preset Builders
+      └─ Many complex presets (4+) → Builder + Director ✅
+```
+
+### Code Comparison
+
+**Named Parameters (Simple):**
+```dart
+var user = User(name: 'John', age: 30);
+```
+
+**Builder Only (Complex):**
+```dart
+var config = GameConfigurationBuilder()
+    .setGraphicsQuality('High')
+    .setSoundEnabled(true)
+    // ... 5+ more settings
+    .build();
+```
+
+**Builder + Director (Standard Presets):**
+```dart
+var director = GameConfigurationDirector();
+var mobileConfig = director.buildMobileConfig(builder);
+var desktopConfig = director.buildDesktopConfig(builder);
+```
+
+**Preset Builder (Convenience):**
+```dart
+var lowSpec = PresetGameConfigurationBuilder.lowSpec().build();
+var highPerf = PresetGameConfigurationBuilder.highPerformance().build();
+```
 
 ---
 
